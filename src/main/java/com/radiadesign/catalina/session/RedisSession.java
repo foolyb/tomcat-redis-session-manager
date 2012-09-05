@@ -47,20 +47,19 @@ public class RedisSession extends StandardSession {
   }
 
   public void setAttribute(String key, Object value) {
-    if (manualDirtyTrackingSupportEnabled && manualDirtyTrackingAttributeKey.equals(key)) {
-      dirty = true;
-      return;
-    }
-
-    Object oldValue = getAttribute(key);
-    if ( value == null && oldValue != null
-         || oldValue == null && value != null
-         || !value.getClass().isInstance(oldValue)
-         || !value.equals(oldValue) ) {
-      changedAttributes.put(key, value);
-    }
+    //set dirty true to solve the setAttribute method does't call after request 
+    dirty = true;
 
     super.setAttribute(key, value);
+        
+    //flush session into redis
+    RedisSessionManager redisManager = (RedisSessionManager) this.manager;
+    try {
+	redisManager.save(this);
+    } catch (IOException e) {
+	log.log(Level.SEVERE, "redis session manager save session:[" + this.getId()
+		  + "] error:", e);
+    }
   }
 
   public void removeAttribute(String name) {
